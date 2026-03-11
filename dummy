@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- CONFIGURATION ---
+DAYS_THRESHOLD="${DAYS_THRESHOLD:-5}"
+# Scanning regions for EC2
+REGIONS=("ap-southeast-1" "ap-southeast-2" "ap-northeast-3" "ap-northeast-1")
+# REPLACE THIS with the URL provided by SD for #alert-ranchersupport-cloudops
+SLACK_WEBHOOK_URL="https://hooks.slack.com/services/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"
+MAP_FILE="email_map.txt"
+DRY_RUN=false
+
+# --- PARSE ARGUMENTS ---
+while getopts "d" opt; do
+  case $opt in
+    d) DRY_RUN=true ;;
+    *) echo "Usage: $0 [-d (dry-run mode)]" && exit 1 ;;
+  esac
+done
+
+# --- LOAD EMAIL MAPPINGS ---
+declare -A EMAIL_MAP
+if [[ -f "$MAP_FILE" ]]; then
+    while IFS='=' read -r key value; do
+        [[ -z "$key" || "$key" =~ ^# ]] && continue
+        EMAIL_MAP["$key"]="$value"
+    done < "$MAP_FILE"
+fi
+
+NOW_EPOCH=$(date -u +%s)
+CUTOFF_SECONDS=$((DAYS_THRESHOLD * 86400))
+UNTAGGED_INSTANCES=""
+
+# --- FUNCTION TO SEND SLACK ALERT ---
+send_slack_notification() {
+    local message="$1"
+    if [ "$DRY_RUN" = true ]; then
+        echo -e "[DRY-RUN] Slack Message: $message"
+    else
+        # Sends a JSON payload to the Slack Webhook URL
+        curl -s -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"$message\"}" "$SLACK_WEBHOOK_URL" > /dev/null
+    fi
+}
+
+# --- CROSS-REGION SCAN ---
+for REGION in "${REGIONS[@]}"; do
+    echo "-------------------------------------------"
+    echo "Scanning EC2 instances in region: $REGION"
+    echo "-------------------------------------------"
+
+    # Capture instance ID, Launch Time, Tags, and Current State
+    INSTANCES=$(aws ec2 describe-instances --region "$REGION" \
+      --query 'Reservations[].Instances[].[InstanceId,LaunchTime,Tags,State.Name]' \
+      --output json 2>/dev/null) || { echo "Skipping $REGION (Region unreachable)"; continue; }
+
+    # Process substitution prevents variable loss outside the loop
+    while read -r instance; do
+        INSTANCE_ID=$(echo "$instance" | jq -r '.[0]')
+        LAUNCH_TIME=$(echo "$instance" | jq -r '.[1]')
+        OWNER_TAG=$(echo "$instance" | jq -r '.[2][]? | select(.Key=="OwnerContact") | .Value' | xargs)
+        INSTANCE_STATE=$(echo "$instance" | jq -r '.[3]')
+
+        LAUNCH_EPOCH=$(date -u -d "$LAUNCH_TIME" +%s)
+        AGE_SECONDS=$((NOW_EPOCH - LAUNCH_EPOCH))
+
+        # Filter out instances that are too new
+        [[ "$AGE_SECONDS" -lt "$CUTOFF_SECONDS" ]] && continue
+        # Ignore terminated instances to reduce noise
+        [[ "$INSTANCE_STATE" == "terminated" ]] && continue
+
+        # Handle untagged instances
+        if [[ -z "$OWNER_TAG" || "$OWNER_TAG" == "null" ]]; then
+            STATE_LABEL=""
+            [[ "$INSTANCE_STATE" != "running" ]] && STATE_LABEL=" *[NOT RUNNING]*"
+            UNTAGGED_INSTANCES="${UNTAGGED_INSTANCES}> • \`$INSTANCE_ID\` ($REGION)$STATE_LABEL\n"
+            continue
+        fi
+
+        CLEAN_OWNER=${OWNER_TAG%@*}
+        USER_NAME="${EMAIL_MAP[$CLEAN_OWNER]:-${CLEAN_OWNER}}"
+        AGE_DAYS=$((AGE_SECONDS / 86400))
+
+        # --- STATE LOGIC ---
+        STATE_MSG=""
+        [[ "$INSTANCE_STATE" != "running" ]] && STATE_MSG="🛑 *[NOT RUNNING]* "
+
+        # Format Slack message with Markdown
+        SLACK_MSG="${STATE_MSG}⚠️ *EC2 Age Alert* ($REGION)\n> Instance: \`$INSTANCE_ID\`\n> Owner: *$USER_NAME*\n> Age: *$AGE_DAYS days*\n> State: \`$INSTANCE_STATE\`"
+
+        echo "Posting alert for $INSTANCE_ID to Slack..."
+        send_slack_notification "$SLACK_MSG"
+
+    done < <(echo "$INSTANCES" | jq -c '.[]')
+done
+
+# --- SEND SUMMARY REPORT FOR UNTAGGED INSTANCES ---
+if [[ -n "$UNTAGGED_INSTANCES" ]]; then
+    # Final summary with requested header
+    SUMMARY_MSG="🚨 *OWNER TAG NULL REPORT*\nThe following instances are missing OwnerContact tags:\n$UNTAGGED_INSTANCES"
+
+    echo "Sending untagged summary to Slack..."
+    send_slack_notification "$SUMMARY_MSG"
+fi
