@@ -8,7 +8,7 @@ The EC2 Cloud Governance Auditor provides real-time visibility into instance lif
 
 The goal of this project is to build a shared governance platform for support engineers that:
 
-* **Provides automated monitoring** for EC2 instances across the APAC theatre.
+* **Provides automated monitoring** for EC2 instances across all the regions.
 * **Enforces resource accountability** by identifying instances missing critical `OwnerContact` tags.
 * **Reduces unnecessary cloud spend** by alerting engineers to resources exceeding a 5-day lifespan.
 * **Centralizes communication** by integrating alerts directly into team Slack channels.
@@ -19,10 +19,10 @@ The goal of this project is to build a shared governance platform for support en
 The EC2 Cloud Governance Auditor consists of three primary components:
 
 ### 1. Multi-Region Scanner
-A bash-based engine that utilizes the AWS CLI to query instances across Sydney, Singapore, Tokyo, and Osaka simultaneously.
+A bash-based engine that utilizes the AWS CLI to query instances across all the regions simultaneously.
 
 ### 2. Logic & Mapping Engine
-A processing layer that calculates instance age, filters for active states, and maps technical user IDs to friendly names.
+A processing layer that calculates instance age, filters for active states, and accurately maps instances to the correct User IDs for precise accountability.
 
 ### 3. Slack Integration Layer
 A notification service that formats technical data into actionable Markdown alerts and delivers them via secure Webhooks.
