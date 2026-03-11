@@ -4,7 +4,7 @@ A specialized automation tool designed to help support engineers monitor, audit,
 
 The EC2 Cloud Governance Auditor provides real-time visibility into instance lifecycles, ensuring that temporary lab environments are cleaned up and cloud costs remain within budget.
 
-## 🎯 Project Goals
+## 🚀 Strategic Objectives
 
 The goal of this project is to build a shared governance platform for support engineers that:
 
@@ -14,7 +14,7 @@ The goal of this project is to build a shared governance platform for support en
 * **Centralizes communication** by integrating alerts directly into team Slack channels.
 * **Encourages FinOps best practices** and cloud cost awareness.
 
-## 🏗️ Architecture Overview
+## ⚙️ Core System Framework
 
 The EC2 Cloud Governance Auditor consists of three primary components:
 
