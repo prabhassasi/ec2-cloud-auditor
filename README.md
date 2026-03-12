@@ -1,25 +1,25 @@
-# 🛠️ EC2 Cloud Governance Auditor
+# 🛠️ Cloud Governance Auditor
 
-A specialized automation tool designed to help support engineers monitor, audit, and optimize EC2 resource usage across multiple AWS regions.
+A specialized automation tool designed to monitor, audit, and optimise resource usage across multiple cloud platforms.
 
-The EC2 Cloud Governance Auditor provides real-time visibility into instance lifecycles, ensuring that temporary lab environments are cleaned up and cloud costs remain within budget.
+The Cloud Governance Auditor provides real-time visibility into instance lifecycles, ensuring that temporary lab environments are cleaned up and cloud costs remain within budget.
 
 ## 🚀 Strategic Objectives
 
-The goal of this project is to build a shared governance platform for support engineers that:
+The goal of this project is to build a governance platform that:
 
-* **Provides automated monitoring** for EC2 instances across all the regions.
+* **Provides automated monitoring** of resources across all the regions.
 * **Enforces resource accountability** by identifying instances missing critical `OwnerContact` tags.
-* **Reduces unnecessary cloud spend** by alerting engineers to resources exceeding a 5-day lifespan.
-* **Centralizes communication** by integrating alerts directly into team Slack channels.
+* **Reduces unnecessary cloud spend** by triggering alerts for resources exceeding a 5-day lifespan.
+* **Centralises communication** by integrating alerts directly into team Slack channels.
 * **Encourages FinOps best practices** and cloud cost awareness.
 
 ## ⚙️ Core System Framework
 
-The EC2 Cloud Governance Auditor consists of three primary components:
+The Cloud Governance Auditor consists of three primary components, which initially focus on the AWS platform
 
 ### 1. Multi-Region Scanner
-A bash-based engine that utilizes the AWS CLI to query instances across all the regions simultaneously.
+A bash-based engine that utilises the AWS CLI to query instances across all the regions simultaneously.
 
 ### 2. Logic & Mapping Engine
 A processing layer that calculates instance age, filters for active states, and accurately maps instances to the correct User IDs for precise accountability.
@@ -37,13 +37,8 @@ The project is currently in its initial monitoring phase. Future development wil
   * Implementing a manager-approved "Exception" process for long-term reproduction labs.
   * Approved instances will receive an `ExpiryDate` tag to temporarily silence automated alerts.
 * **Expanded Region Coverage**
-  * Scaling the current ANZ-focused scan to cover the entire **APAC theatre**, ensuring 100% visibility of our engineering footprint.
+  * Scaling the scan to cover the entire **region**, ensuring 100% visibility of our engineering footprint.
 * **Self-Healing Capabilities**
   * Adding optional logic to automatically stop (not terminate) untagged or expired resources after a 24-hour warning period.
 
 ---
-
-### 📝 Technical Requirements
-* **AWS CLI v2** (Configured with `EC2:Describe` permissions)
-* **jq** (Command-line JSON processor)
-* **Slack Webhook URL** (Configured for the `#alert-ranchersupport-cloudops` channel)# ec2-cloud-auditor
