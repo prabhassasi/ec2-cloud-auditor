@@ -6,7 +6,7 @@ DAYS_THRESHOLD="${DAYS_THRESHOLD:-5}"
 # Scanning regions for EC2
 REGIONS=("ap-southeast-1" "ap-southeast-2" "ap-northeast-3" "ap-northeast-1")
 # REPLACE THIS with the URL provided by SD for #alert-ranchersupport-cloudops
-SLACK_WEBHOOK_URL="https://hooks.slack.com/services/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"
+SLACK_WEBHOOK_URL="https://hooks.slack.com/dummyURL/T0AFGR7GYDS/B0AFGRN997W/DBh3002As8zGm52TMs3R3Q5U"
 MAP_FILE="email_map.txt"
 DRY_RUN=false
 
