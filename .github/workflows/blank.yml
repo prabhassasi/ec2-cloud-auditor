@@ -1,0 +1,31 @@
+name: Scheduled EBS Snapshot
+
+on:
+  schedule:
+    # Runs every 3 days at midnight (UTC)
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Allows you to run it manually for testing
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-2 # Updated to Sydney
+
+      - name: Create Snapshot
+        run: |
+          # Get current date for the snapshot name
+          TIMESTAMP=$(date +'%Y-%m-%d')
+          VOLUME_ID="vol-09fce1952080a14d8"
+          
+          echo "Starting snapshot for $VOLUME_ID in Sydney region..."
+          
+          aws ec2 create-snapshot \
+            --volume-id $VOLUME_ID \
+            --description "Automated backup - $TIMESTAMP" \
+            --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=Backup-$TIMESTAMP},{Key=CreatedBy,Value=GitHubActions}]"
