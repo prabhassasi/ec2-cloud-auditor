@@ -1,0 +1,66 @@
+name: Deploy Nginx to RKE2
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 54.252.146.120
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # 1. Setup the RKE2 Environment
+            export CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml
+            export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+            export PATH=$PATH:/var/lib/rancher/rke2/bin
+
+            # 2. Deploy Nginx
+            # Using sudo -E to maintain the exported variables for the root user
+            sudo -E kubectl apply -f - <<EOF
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: nginx-deployment
+              labels:
+                app: nginx
+            spec:
+              replicas: 2
+              selector:
+                matchLabels:
+                  app: nginx
+              template:
+                metadata:
+                  labels:
+                    app: nginx
+                spec:
+                  containers:
+                  - name: nginx
+                    image: nginx:latest
+                    ports:
+                    - containerPort: 80
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: nginx-service
+            spec:
+              selector:
+                app: nginx
+              ports:
+                - protocol: TCP
+                  port: 80
+                  targetPort: 80
+              type: NodePort
+            EOF
+
+            # 3. Verify status
+            sudo -E kubectl get pods -l app=nginx
