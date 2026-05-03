@@ -19,49 +19,53 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            # We use 'sudo su -' behavior by calling 'bash -c' as root
+            # 1. Create the manifest as the 'ubuntu' user first
+            cat << 'EOF' > /tmp/nginx-app.yaml
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: nginx-deployment
+            spec:
+              replicas: 2
+              selector:
+                matchLabels:
+                  app: nginx
+              template:
+                metadata:
+                  labels:
+                    app: nginx
+                spec:
+                  containers:
+                  - name: nginx
+                    image: nginx:latest
+                    ports:
+                    - containerPort: 80
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: nginx-service
+            spec:
+              selector:
+                app: nginx
+              ports:
+                - protocol: TCP
+                  port: 80
+                  targetPort: 80
+              type: NodePort
+            EOF
+
+            # 2. Use sudo su - to execute the deployment as root
             sudo su - root -c "
-              # 1. Setup Environment inside the root shell
+              # Setup Environment
               export CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml
               export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
               export PATH=\$PATH:/var/lib/rancher/rke2/bin
 
-              # 2. Deploy Nginx
-              kubectl apply -f - <<EOF
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: nginx-deployment
-              spec:
-                replicas: 2
-                selector:
-                  matchLabels:
-                    app: nginx
-                template:
-                  metadata:
-                    labels:
-                      app: nginx
-                  spec:
-                    containers:
-                    - name: nginx
-                      image: nginx:latest
-                      ports:
-                      - containerPort: 80
-              ---
-              apiVersion: v1
-              kind: Service
-              metadata:
-                name: nginx-service
-              spec:
-                selector:
-                  app: nginx
-                ports:
-                  - protocol: TCP
-                    port: 80
-                    targetPort: 80
-                type: NodePort
-              EOF
-
-              # 3. Status check
+              # Apply from the file we just created
+              kubectl apply -f /tmp/nginx-app.yaml
               kubectl rollout status deployment/nginx-deployment
             "
+
+            # 3. Cleanup
+            rm /tmp/nginx-app.yaml
